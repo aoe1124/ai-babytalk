@@ -124,18 +124,24 @@ export async function POST(request: Request) {
     return NextResponse.json(completion.choices[0].message);
 
   } catch (error) {
-    console.error('详细错误信息:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
-    });
+    if (error instanceof Error) {
+      console.error('详细错误信息:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+      
+      return NextResponse.json(
+        { error: `API调用失败: ${error.message}` },
+        { status: 500 }
+      );
+    }
     
-    // 如果是 Error 对象，使用其 message 属性
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    
+    // 如果不是 Error 对象，返回通用错误信息
+    console.error('未知错误:', error);
     return NextResponse.json(
-      { error: `API调用失败: ${errorMessage}` },
+      { error: 'API调用失败: 未知错误' },
       { status: 500 }
     );
   }
