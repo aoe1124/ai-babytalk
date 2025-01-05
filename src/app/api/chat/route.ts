@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     // 返回响应
     return NextResponse.json(completion.choices[0].message);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('详细错误信息:', {
       name: error.name,
       message: error.message,
@@ -131,8 +131,11 @@ export async function POST(request: Request) {
       cause: error.cause
     });
     
+    // 如果是 Error 对象，使用其 message 属性
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    
     return NextResponse.json(
-      { error: `API调用失败: ${error.message}` },
+      { error: `API调用失败: ${errorMessage}` },
       { status: 500 }
     );
   }
