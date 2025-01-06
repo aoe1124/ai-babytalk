@@ -19,6 +19,30 @@ export interface WordRecord {
   isPartOfSentence?: boolean;
 }
 
+// 将 WordRecord 转换为普通对象的辅助函数
+function toPlainObject(record: WordRecord): Record<string, unknown> {
+  return Object.entries(record).reduce((acc, [key, value]) => {
+    acc[key] = value === undefined ? null : value;
+    return acc;
+  }, {} as Record<string, unknown>);
+}
+
+// 将普通对象转换回 WordRecord 的辅助函数
+function toWordRecord(record: Record<string, unknown>): WordRecord {
+  return {
+    id: String(record.id),
+    word: String(record.word),
+    category: String(record.category),
+    createdAt: Number(record.createdAt),
+    updatedAt: Number(record.updatedAt),
+    context: record.context ? String(record.context) : undefined,
+    pronunciation: record.pronunciation ? String(record.pronunciation) : undefined,
+    notes: record.notes ? String(record.notes) : undefined,
+    relatedWords: Array.isArray(record.relatedWords) ? record.relatedWords.map(String) : undefined,
+    isPartOfSentence: record.isPartOfSentence ? Boolean(record.isPartOfSentence) : undefined,
+  };
+}
+
 // 数据库操作类
 export class WordsDB {
   // 添加新词语
@@ -27,14 +51,21 @@ export class WordsDB {
     const id = generateId();
     
     const wordRecord: WordRecord = {
-      ...wordData,
       id,
+      word: wordData.word,
+      category: wordData.category,
+      context: wordData.context,
+      pronunciation: wordData.pronunciation,
+      notes: wordData.notes,
+      relatedWords: wordData.relatedWords,
+      isPartOfSentence: wordData.isPartOfSentence,
       createdAt: now,
       updatedAt: now,
     };
 
     // 存储词语记录
-    await kv.hset(`word:${id}`, wordRecord);
+    await kv.hset(`word:${id}`, toPlainObject(wordRecord));
+    
     // 添加到分类集合
     await kv.sadd(`category:${wordRecord.category}`, id);
     // 添加到时间线
@@ -45,13 +76,14 @@ export class WordsDB {
 
   // 获取词语记录
   static async getWord(id: string): Promise<WordRecord | null> {
-    const word = await kv.hgetall(`word:${id}`);
-    return word as WordRecord || null;
+    const record = await kv.hgetall(`word:${id}`);
+    if (!record || Object.keys(record).length === 0) return null;
+    return toWordRecord(record);
   }
 
   // 获取某个分类的所有词语
   static async getWordsByCategory(category: string): Promise<WordRecord[]> {
-    const ids = await kv.smembers(`category:${category}`);
+    const ids = (await kv.smembers(`category:${category}`)).map(String);
     const words = await Promise.all(
       ids.map(id => this.getWord(id))
     );
@@ -60,7 +92,7 @@ export class WordsDB {
 
   // 获取最近添加的词语
   static async getRecentWords(limit: number = 10): Promise<WordRecord[]> {
-    const ids = await kv.zrange('timeline', -limit, -1);
+    const ids = (await kv.zrange('timeline', -limit, -1)).map(String);
     const words = await Promise.all(
       ids.map(id => this.getWord(id))
     );
@@ -79,7 +111,8 @@ export class WordsDB {
       updatedAt: Date.now(),
     };
 
-    await kv.hset(`word:${id}`, updatedWord);
+    // 存储更新后的记录
+    await kv.hset(`word:${id}`, toPlainObject(updatedWord));
     
     // 如果分类改变了，需要更新分类索引
     if (updates.category && updates.category !== word.category) {
