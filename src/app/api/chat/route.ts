@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
-import { WordsDB } from '@/lib/db';
+import { WordsDB, WordRecord } from '@/lib/db';
 
 // 创建 OpenAI 客户端实例
 const openai = new OpenAI({
@@ -238,7 +238,7 @@ export async function POST(request: Request) {
           );
           
           if (wordToModify) {
-            const updates: any = {
+            const updates: Partial<WordRecord> = {
               word: wordInfo.word // 更新词语内容
             };
             if (wordInfo.category) updates.category = wordInfo.category;
