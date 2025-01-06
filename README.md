@@ -129,7 +129,7 @@
 
 ### 部署环境
 - 部署平台：Vercel
-- 数据库：Vercel KV（用于存储词语记录）
+- 数据库：Upstash（Serverless Redis数据库）
 - API路由：Vercel Serverless Functions
 
 ### 核心技术特点
@@ -138,6 +138,9 @@
    - 自动分类标签系统
    - 时间序列记录
    - 关联关系管理
+   - 使用Upstash Redis作为主数据库
+     * 支持高性能的读写操作
+     * 自动数据备份和恢复
 
    数据结构设计：
    ```typescript
@@ -159,6 +162,11 @@
      relatedWords?: string[]; // 相关词语
      isPartOfSentence?: boolean; // 是否已经能用于造句
    }
+
+   // 核心数据存储结构
+   // 1. 词语记录：word:{id} -> Hash存储完整记录
+   // 2. 分类索引：category:{name} -> Set存储该分类下的词语ID
+   // 3. 时间线：timeline -> SortedSet按时间存储词语ID
 
    // 分类的类型定义
    type WordCategory =
@@ -185,6 +193,8 @@
      * 需要配置的环境变量：
        - API Key
        - Base URL
+       - Upstash Redis URL
+       - Upstash Redis Token
 
 3. **可视化实现**
    - 使用D3.js/ECharts实现图谱
@@ -205,12 +215,12 @@
 - [✓] 实现简单的对话界面
 - [✓] 接入Deepseek API基础功能
 - [✓] 设计基础AI角色提示词
-- [ ] 实现智能对话的核心功能：
-  * 词语录入对话流程
-  * 记录修改对话流程
-  * 分类调整对话流程
-- [ ] 实现基础的词语存储功能
-- [ ] 部署到Vercel验证可用性
+- [✓] 实现智能对话的核心功能：
+  * [✓] 词语录入对话流程
+  * [✓] 记录修改对话流程
+  * [✓] 分类调整对话流程
+- [✓] 实现基础的词语存储功能
+- [✓] 部署到Vercel验证可用性
 
 ### 第二阶段：可视化系统
 - [ ] 实现词语图谱展示

@@ -1,11 +1,58 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
+import { WordsDB } from '@/lib/db';
 
 // 创建 OpenAI 客户端实例
 const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY || '',
   baseURL: process.env.DEEPSEEK_BASE_URL || '',
 });
+
+// 从AI回复中提取词语信息
+function extractWordInfo(content: string) {
+  // 检查是否是修改请求
+  const isModification = content.includes('已修改：');
+  const isClassification = content.includes('原分类：'); // 检查是否是分类调整
+
+  if (isModification) {
+    // 匹配"已修改：[词语]"的模式
+    const wordMatch = content.match(/已修改：[「『]?([^」』\n]+)[」』]?/);
+    // 匹配"新分类：[分类]"的模式
+    const categoryMatch = content.match(/新分类：[「『]?([^」』\n]+)[」』]?/);
+    // 匹配"新场景：[场景]"的模式
+    const contextMatch = content.match(/新场景：[「『]?([^」』\n]+)[」』]?/);
+    // 匹配"原分类：[分类]"的模式
+    const oldCategoryMatch = content.match(/原分类：[「『]?([^」』\n]+)[」』]?/);
+    // 匹配"原词语：[词语]"的模式
+    const oldWordMatch = content.match(/原词语：[「『]?([^」』\n]+)[」』]?/);
+
+    if (wordMatch) {
+      return {
+        type: isClassification ? 'classify' : 'modify',
+        word: wordMatch[1].trim(),
+        oldWord: oldWordMatch ? oldWordMatch[1].trim() : undefined,
+        category: categoryMatch ? categoryMatch[1].trim() : undefined,
+        context: contextMatch ? contextMatch[1].trim() : undefined,
+        oldCategory: oldCategoryMatch ? oldCategoryMatch[1].trim() : undefined
+      };
+    }
+  } else {
+    // 原有的新词语记录逻辑
+    const wordMatch = content.match(/已记录：[「『]?([^」』\n]+)[」』]?/);
+    const categoryMatch = content.match(/归类为：[「『]?([^」』\n]+)[」』]?/);
+    const contextMatch = content.match(/场景：[「『]?([^」』\n]+)[」』]?/);
+
+    if (wordMatch && categoryMatch) {
+      return {
+        type: 'add',
+        word: wordMatch[1].trim(),
+        category: categoryMatch[1].trim(),
+        context: contextMatch ? contextMatch[1].trim() : undefined
+      };
+    }
+  }
+  return null;
+}
 
 export async function POST(request: Request) {
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -50,9 +97,23 @@ export async function POST(request: Request) {
 
 2. 回应规范
    第一优先级（必须）：
-   - 明确确认："好的，已记录：[词语]"
-   - 告知分类："归类为：[分类]"
-   
+   新词语记录时，必须严格按照以下格式：
+   已记录：[词语]
+   归类为：[分类]
+   场景：[场景描述]
+
+   修改记录时，必须严格按照以下格式：
+   已修改：[新词语]
+   原词语：[原词语]
+   新分类：[分类]
+   新场景：[场景]
+
+   分类调整时，必须严格按照以下格式：
+   已修改：[词语]
+   原词语：[词语]
+   新分类：[分类]
+   原分类：[原分类]
+
    第二优先级（选择性）：
    - 简单追问："如果方便的话，能告诉我是在什么场景下说的吗？"
    - 相关建议："既然会说'[词语]'了，建议教这些相关词语：[2-3个相关且未学过的词语]。可以这样教：[具体教学方法]"
@@ -94,6 +155,8 @@ export async function POST(request: Request) {
 2. 修改记录时
    - 直接确认修改内容
    - 明确新的分类（如果需要）
+   - 确认场景变更（如果需要）
+   - 给出相关建议（如果合适）
 
 3. 提供建议时
    - 建议要简短具体
@@ -111,17 +174,95 @@ export async function POST(request: Request) {
 1. 优先完成核心记录功能
 2. 避免询问过多细节
 3. 建议和追问要适度
-4. 保持回复的简洁性`
+4. 保持回复的简洁性
+
+回复格式示例：
+
+1. 记录新词语时：
+已记录：汽车
+归类为：交通
+场景：在路上看到救护车时说的
+建议：可以教他"救护车"和"消防车"，可以指着路上的车辆教他认识不同的车型。
+
+2. 修改记录时：
+已修改：汽车
+原词语：汽车
+新分类：交通工具
+新场景：在看动画片时说的
+建议：可以通过动画片教他认识更多交通工具。
+
+3. 分类调整时：
+已修改：苹果
+原词语：苹果
+新分类：食物
+原分类：水果
+说明：已将分类调整为更适合的类别。`
         },
         ...messages
       ],
       stream: false,
     });
 
-    console.log('API响应:', completion.choices[0]);
+    const aiMessage = completion.choices[0].message;
+    console.log('AI回复:', aiMessage.content);
+
+    if (!aiMessage.content) {
+      console.error('AI回复内容为空');
+      return NextResponse.json(
+        { error: 'AI回复内容为空' },
+        { status: 500 }
+      );
+    }
+
+    // 尝试从回复中提取词语信息
+    const wordInfo = extractWordInfo(aiMessage.content);
+    
+    // 如果成功提取到词语信息，根据类型进行相应操作
+    if (wordInfo) {
+      try {
+        if (wordInfo.type === 'add' && wordInfo.category) {
+          // 添加新词语
+          const savedWord = await WordsDB.addWord({
+            word: wordInfo.word,
+            category: wordInfo.category,
+            context: wordInfo.context
+          });
+          console.log('保存的词语:', savedWord);
+        } else if ((wordInfo.type === 'modify' || wordInfo.type === 'classify') && wordInfo.category) {
+          // 查找并更新词语
+          // 先通过原词语内容查找最近的记录
+          const recentWords = await WordsDB.getRecentWords(10);
+          const wordToModify = recentWords.find(w => 
+            // 如果有原词语信息就用原词语查找，否则用新词语
+            w.word === (wordInfo.oldWord || wordInfo.word)
+          );
+          
+          if (wordToModify) {
+            const updates: any = {
+              word: wordInfo.word // 更新词语内容
+            };
+            if (wordInfo.category) updates.category = wordInfo.category;
+            if (wordInfo.context) updates.context = wordInfo.context;
+            
+            // 如果是分类调整，记录原分类
+            if (wordInfo.type === 'classify' && wordInfo.oldCategory) {
+              console.log(`分类调整: ${wordInfo.oldCategory} -> ${wordInfo.category}`);
+            }
+            
+            const updatedWord = await WordsDB.updateWord(wordToModify.id, updates);
+            console.log('更新的词语:', updatedWord);
+          } else {
+            console.log('未找到要修改的词语:', wordInfo.oldWord || wordInfo.word);
+          }
+        }
+      } catch (error) {
+        console.error('操作词语失败:', error);
+        // 即使操作失败，也继续返回AI的回复
+      }
+    }
 
     // 返回响应
-    return NextResponse.json(completion.choices[0].message);
+    return NextResponse.json(aiMessage);
 
   } catch (error) {
     if (error instanceof Error) {

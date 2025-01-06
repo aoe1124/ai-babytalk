@@ -1,4 +1,5 @@
 import React from 'react';
+import RecentRecords from '@/components/records/RecentRecords';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -18,15 +19,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
           <aside className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-4">
+              <h2 className="text-lg font-semibold mb-3">最近记录</h2>
+              <RecentRecords />
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-lg font-semibold mb-3">发展进度</h2>
               <div className="text-sm text-gray-500 italic">
                 🚧 进度追踪功能开发中...
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="text-lg font-semibold mb-3">历史记录</h2>
-              <div className="text-sm text-gray-500 italic">
-                🚧 历史记录功能开发中...
               </div>
             </div>
           </aside>
