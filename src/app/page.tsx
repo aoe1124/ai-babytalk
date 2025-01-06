@@ -3,7 +3,7 @@ import ChatWindow from '@/components/chat/ChatWindow';
 
 export default function Home() {
   return (
-    <MainLayout>
+    <MainLayout showSidebar={true}>
       <ChatWindow />
     </MainLayout>
   );

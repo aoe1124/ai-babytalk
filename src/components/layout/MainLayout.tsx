@@ -1,34 +1,49 @@
 import React from 'react';
 import RecentRecords from '@/components/records/RecentRecords';
+import Navbar from './Navbar';
 
 interface MainLayoutProps {
   children: React.ReactNode;
+  showSidebar?: boolean;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout({ children, showSidebar = false }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">宝宝说</h1>
-          <p className="text-gray-600">智能育儿助手</p>
-        </header>
-        <main className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="md:col-span-3">
+      <Navbar />
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <main className="flex gap-6">
+          {/* 左侧信息栏，只在首页显示 */}
+          {showSidebar && (
+            <aside className="w-80 space-y-6">
+              {/* 数据概览 */}
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-semibold mb-3">数据概览</h2>
+                <div className="text-sm text-gray-500">
+                  🚧 数据概览开发中...
+                </div>
+              </div>
+              
+              {/* 最近记录 */}
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-semibold mb-3">最近记录</h2>
+                <RecentRecords />
+              </div>
+              
+              {/* 分类统计 */}
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-semibold mb-3">分类统计</h2>
+                <div className="text-sm text-gray-500">
+                  🚧 分类统计开发中...
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {/* 主要内容区 */}
+          <div className={showSidebar ? "flex-1" : "w-full"}>
             {children}
           </div>
-          <aside className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="text-lg font-semibold mb-3">最近记录</h2>
-              <RecentRecords />
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="text-lg font-semibold mb-3">发展进度</h2>
-              <div className="text-sm text-gray-500 italic">
-                🚧 进度追踪功能开发中...
-              </div>
-            </div>
-          </aside>
         </main>
       </div>
     </div>
