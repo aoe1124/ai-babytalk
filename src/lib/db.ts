@@ -1,17 +1,4 @@
 import { kv } from '@vercel/kv';
-import { Redis } from '@upstash/redis';
-
-let redisClient: Redis | null = null;
-
-async function getRedisClient() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL || '',
-      token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-    });
-  }
-  return redisClient;
-}
 
 // 生成唯一ID的函数
 const generateId = () => {

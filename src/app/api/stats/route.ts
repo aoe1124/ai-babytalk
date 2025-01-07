@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { WordsDB } from '@/lib/db';
-import { kv } from '@vercel/kv';
 
 export async function GET() {
   try {

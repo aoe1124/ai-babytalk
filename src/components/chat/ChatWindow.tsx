@@ -73,8 +73,6 @@ export default function ChatWindow() {
         throw new Error('API请求失败');
       }
 
-      const data = await response.json();
-      
       // 重新加载消息历史
       await loadHistory();
 

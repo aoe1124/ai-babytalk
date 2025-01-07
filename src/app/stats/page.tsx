@@ -15,7 +15,6 @@ export default function StatsPage() {
   const [words, setWords] = useState<WordRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [deleteWordId, setDeleteWordId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
