@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
-import { WordsDB, WordRecord } from '@/lib/db';
+import { WordsDB, WordRecord, ChatDB } from '@/lib/db';
 
 // 创建 OpenAI 客户端实例
 const openai = new OpenAI({
@@ -76,11 +76,10 @@ export async function POST(request: Request) {
     console.log('- API Key 存在:', !!process.env.DEEPSEEK_API_KEY);
     console.log('- Base URL:', process.env.DEEPSEEK_BASE_URL);
 
-    // 从请求中获取消息
-    const { messages } = await request.json();
-    console.log('收到的消息:', messages);
+    const body = await request.json();
+    const messages = body.messages || [];
 
-    // 调用 Deepseek API
+    // 创建OpenAI聊天请求
     const completion = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages: [
@@ -212,6 +211,31 @@ export async function POST(request: Request) {
         { error: 'AI回复内容为空' },
         { status: 500 }
       );
+    }
+
+    // 保存用户消息和AI回复到数据库
+    try {
+      const userMessage = messages[messages.length - 1];
+      console.log('准备保存用户消息:', userMessage);
+      const savedUserMessage = await ChatDB.addMessage({
+        role: userMessage.role,
+        content: userMessage.content
+      });
+      console.log('用户消息已保存:', savedUserMessage);
+
+      console.log('准备保存AI回复:', aiMessage);
+      const savedAiMessage = await ChatDB.addMessage({
+        role: 'assistant',
+        content: aiMessage.content
+      });
+      console.log('AI回复已保存:', savedAiMessage);
+
+      // 验证消息是否成功保存
+      const recentMessages = await ChatDB.getRecentMessages();
+      console.log('当前所有消息:', recentMessages);
+    } catch (error) {
+      console.error('保存聊天记录失败:', error);
+      // 继续处理，不中断流程
     }
 
     // 尝试从回复中提取词语信息

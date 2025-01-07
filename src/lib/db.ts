@@ -1,4 +1,17 @@
 import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+let redisClient: Redis | null = null;
+
+async function getRedisClient() {
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL || '',
+      token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+    });
+  }
+  return redisClient;
+}
 
 // 生成唯一ID的函数
 const generateId = () => {
@@ -150,5 +163,72 @@ export class WordsDB {
     );
 
     return stats;
+  }
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+export class ChatDB {
+  static async addMessage(message: Omit<ChatMessage, 'id' | 'createdAt'>): Promise<ChatMessage> {
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    const newMessage: ChatMessage = {
+      id,
+      ...message,
+      createdAt
+    };
+
+    // 转换为普通对象
+    const messageObj = {
+      id: newMessage.id,
+      role: newMessage.role,
+      content: newMessage.content,
+      createdAt: newMessage.createdAt
+    };
+
+    // 直接存储消息，与WordsDB类似
+    await kv.hset(`chat:${id}`, messageObj);
+    // 添加到时间线
+    await kv.zadd('chat:timeline', { score: new Date(createdAt).getTime(), member: id });
+
+    return newMessage;
+  }
+
+  static async getRecentMessages(limit: number = 50): Promise<ChatMessage[]> {
+    // 从时间线获取最近的消息ID
+    const messageIds = await kv.zrange('chat:timeline', -limit, -1);
+    
+    if (!messageIds.length) {
+      return [];
+    }
+
+    // 获取所有消息
+    const messages = await Promise.all(
+      messageIds.map(async (id) => {
+        const msg = await kv.hgetall(`chat:${id}`);
+        if (!msg || !msg.id || !msg.role || !msg.content || !msg.createdAt) {
+          return null;
+        }
+        return {
+          id: String(msg.id),
+          role: msg.role as 'user' | 'assistant',
+          content: String(msg.content),
+          createdAt: String(msg.createdAt)
+        };
+      })
+    );
+
+    return messages.filter((msg): msg is ChatMessage => msg !== null);
+  }
+
+  static async deleteMessage(id: string): Promise<boolean> {
+    await kv.del(`chat:${id}`);
+    await kv.zrem('chat:timeline', id);
+    return true;
   }
 } 

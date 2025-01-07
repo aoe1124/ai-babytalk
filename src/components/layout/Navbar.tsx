@@ -34,16 +34,6 @@ export default function Navbar() {
               首页
             </Link>
             <Link 
-              href="/graph" 
-              className={`px-5 py-2 rounded-md text-base font-medium transition-colors ${
-                isActive('/graph') 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              图谱
-            </Link>
-            <Link 
               href="/stats" 
               className={`px-5 py-2 rounded-md text-base font-medium transition-colors ${
                 isActive('/stats') 
@@ -52,6 +42,16 @@ export default function Navbar() {
               }`}
             >
               统计
+            </Link>
+            <Link 
+              href="/graph" 
+              className={`px-5 py-2 rounded-md text-base font-medium transition-colors ${
+                isActive('/graph') 
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              图谱
             </Link>
             <Link 
               href="/settings" 
