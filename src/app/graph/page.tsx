@@ -12,6 +12,19 @@ interface WordNode {
   children?: WordNode[];
 }
 
+interface WordData {
+  id: string;
+  word: string;
+  category: string;
+  createdAt: number;
+  updatedAt: number;
+  context?: string;
+  pronunciation?: string;
+  notes?: string;
+  relatedWords?: string[];
+  isPartOfSentence?: boolean;
+}
+
 export default function GraphPage() {
   const [graphData, setGraphData] = useState<WordNode | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +52,7 @@ export default function GraphPage() {
         const categories: { [key: string]: WordNode[] } = {};
         
         // 按分类组织词语
-        words.forEach((word: any) => {
+        words.forEach((word: WordData) => {
           const category = word.category || '未分类';
           if (!categories[category]) {
             categories[category] = [];
